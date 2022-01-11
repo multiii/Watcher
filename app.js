@@ -8,7 +8,7 @@ import chalk from "chalk";
 import https from 'https';
 import got from 'got';
 var replying = false;
-
+var render;
 var imageRendering;
 var screen = blessed.screen({
     smartCSR: true
@@ -83,7 +83,8 @@ class RenderGif {
     async getImage() {
         this.body = await got(this.url).buffer();
         imageRendering= this;
-        
+        render.updateImage()
+        render.render();
     }
     getBuffer() {
         return this.body;
@@ -199,6 +200,11 @@ class Render {
         this.log = log;
         this.imageViewer = imageViewer;
     }
+    async updateImage() {
+        this.lastImage = imageRendering;
+        this.imageViewer.clearImage();
+        this.imageViewer.setImage(this.lastImage.getBuffer());
+    }
     updateMessages(messages) {
         this.messages = messages;
         this.messageList.scroll(10000);
@@ -274,11 +280,10 @@ var messageList = blessed.list({
     keys: true,
     vi: true,
     mouse: true,
-    width: '50%',
+    width: '60%',
     height: '80%',
     top: 2,
     right: 0,
-    border: 'line',
     scrollbar: {
         ch: ' ',
         track: {
@@ -309,20 +314,19 @@ var messageList = blessed.list({
 });
 
 var imageViewer = blessed.Image({
-    width: "50%",
+    width: "40%",
     height: "80%",
     type: "ansi",
     top: 2,
     left: 0,
     tags: true,
-    border: "line",
     label: ' {bold}{cyan-fg}Image Viewer{/cyan-fg}{/bold} ',
     handler: function () { }
 
 });
 
 screen.append(log)
-var render = new Render(screen, messageList, log, imageViewer);
+ render = new Render(screen, messageList, log, imageViewer);
 var client = new Discord.Client({
     intents: new Discord.Intents([
         "GUILDS",
