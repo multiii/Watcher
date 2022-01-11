@@ -10,11 +10,15 @@ var gif = false;
 var _a, _b;
 var replying = false;
 
+var globalList;
 
 
 
 var screen = blessed.screen({
-    smartCSR: true
+    smartCSR: true,
+    fullUnicode: true,
+    debug: true,
+    dockBorders: true
 });
 
 
@@ -27,15 +31,7 @@ var input = blessed.textarea({
         left: 2
     },
     width: '100%',
-    inputOnFocus: true,
-    style: {
-        fg: '#caced6',
-        bg: 'grey',
-        focus: {
-            fg: '#f6f6f6',
-            bg: 'black'
-        }
-    }
+    inputOnFocus: true
 });
 
 
@@ -167,6 +163,83 @@ function renderMessages() {
     input.focus();
     screen.render();
 }
+
+
+function showGlobalList() {
+    globalList = blessed.list({
+        label: ' {bold}{cyan-fg}Your Channels{/cyan-fg}{/bold}  ',
+        tags: true,
+        top: 1,
+        right: 0,
+        width: "100%",
+        height: '90%',
+        keys: true,
+        vi: true,
+        mouse: true,
+        border: 'line',
+        scrollbar: {
+            ch: ' ',
+            track: {
+                bg: 'cyan'
+            },
+            style: {
+                inverse: true
+            }
+        },
+        style: {
+            item: {
+                hover: {
+                    bg: 'blue'
+                }
+            },
+            selected: {
+                bg: 'blue',
+                bold: true
+            }
+        },
+        search: function (callback) {
+            prompt.input('Search:', '', function (err, value) {
+                if (err) return;
+                return callback(null, value);
+            });
+        }
+    });
+    globalList.on('select', function (index) {
+        favoriteChannels.push(index.channel.id);
+        fs.writeFile('./favoriteChannels.json', JSON.stringify(favoriteChannels), err => {
+            if (err) {
+                log.addItem('Error writing file', err)
+            } else {
+                log.addItem('Successfully wrote file')
+            }
+        })
+        currentChannel = index.channel;
+        log.addItem(currentChannel.name);
+        log.scroll(10000);
+        screen.remove(globalList);
+        renderMessages();
+    })
+
+    client.channels.cache.forEach(function (channel, id) {
+        if (channel.isText()) {
+            log.addItem(channel.name)
+            log.scroll(10000);
+            var item = channelList.appendItem(channel.name);
+            item.channel = channel;
+            
+           
+        }
+    });
+
+    screen.remove(serverList);
+    screen.remove(messageList);
+    screen.remove(input);
+    screen.append(channelList);
+    channelList.focus();
+    screen.render();
+}
+
+
 function showChannelList() {
     channelList = blessed.list({
         label: ' {bold}{cyan-fg}Your Channels{/cyan-fg}{/bold}  ',
@@ -229,8 +302,6 @@ function showChannelList() {
     channelList.focus();
     screen.render();
 }
-
-
 
 function showServerList() {
     serverList = blessed.list({
@@ -339,13 +410,7 @@ var app = function () {
     fs.readFile("./favoriteChannels.json", "utf8", (err, jsonString) => {
         if (err) {
             log.addItem("File read failed:", err);
-            fs.writeFile('./favoriteChannels.json', JSON.stringify(favoriteChannels), err => {
-                if (err) {
-                    log.addItem('Error writing file', err)
-                } else {
-                    log.addItem('Successfully wrote file')
-                }
-            })
+           
         } else {
             try {
                 favoriteChannels = JSON.parse(jsonString);
