@@ -5,8 +5,8 @@ import blessed from "neo-blessed";
 import chalk from "chalk";
 import https from 'https';
 import got from 'got';
-
-
+import terminalImage from 'terminal-image';
+var gif = false;
 var _a, _b;
 var replying = false;
 
@@ -95,7 +95,7 @@ var serverList;
 
 var channelList;
 
-
+var lastImage;
 
 
 var messageList = blessed.list({
@@ -108,6 +108,7 @@ var messageList = blessed.list({
     height: '80%',
     top: 2,
     right: 0,
+    border:"line",
     scrollbar: {
         ch: ' ',
         track: {
@@ -137,19 +138,6 @@ var messageList = blessed.list({
     }
 });
 
-var imageViewer = blessed.Image({
-    parent: messageList,
-    width: "10%",
-    height: "10%",
-    type: "ansi",
-    top: 0,
-    left: 0,
-    tags: true,
-    label: ' {bold}{cyan-fg}Image Viewer{/cyan-fg}{/bold} ',
-    handler: function () { }
-
-});
-
 var client = new Discord.Client({
     intents: new Discord.Intents([
         "GUILDS",
@@ -173,8 +161,7 @@ var client = new Discord.Client({
 function renderMessages() {
     screen.remove(channelList);
     screen.remove(serverList);
-    //messageList.setLabel(chalk.blueBright(currentServer.name) + "  " + chalk.red(currentChannel.name))
-    screen.append(imageViewer);
+    messageList.setLabel(chalk.blueBright(currentServer.name) + "  " + chalk.red(currentChannel.name))
     screen.append(messageList);
     screen.append(input);
     input.focus();
@@ -235,7 +222,6 @@ function showChannelList() {
         }
     });
 
-    screen.remove(imageViewer);
     screen.remove(serverList);
     screen.remove(messageList);
     screen.remove(input);
@@ -404,12 +390,17 @@ var app = function () {
                                     regex.lastIndex++;
                                 }
                                 var body = await got(m[1].split('"')[0]).buffer()
-                                imageViewer.setImage(body)
+                                lastImage = body;
+                                gif = true;
                             }
 
                         }
-                        if (contentType.startsWith("image")) {
-                            imageViewer.setImage(request.buffer())
+                        if (contentType.startsWith("image/gif")) {
+                            lastImage = request.buffer()
+                            gif = true;
+                        } else if (contentType.startsWith("image")) {
+                            lastImage = request.buffer()
+                            gif = false;
                         }
                     }
                 }
@@ -461,12 +452,17 @@ var app = function () {
                                             regex.lastIndex++;
                                         }
                                         var body = await got(m[1].split('"')[0]).buffer()
-                                        imageViewer.setImage(body)
+                                        lastImage = body;
+                                        gif = true;
                                     }
 
                                 }
-                                if (contentType.startsWith("image")) {
-                                    imageViewer.setImage(request.buffer())
+                                if (contentType.startsWith("image/gif")) {
+                                    lastImage = request.buffer()
+                                    gif = true;
+                                } else if (contentType.startsWith("image")) {
+                                    lastImage = request.buffer()
+                                    gif = false;
                                 }
 
                             }
@@ -494,7 +490,7 @@ var app = function () {
     input.key('enter', function () {
         return __awaiter(this, void 0, void 0, function () {
             var message, args, cmd, rickrolls, parts, title, description, footer;
-            return __generator(this, function (_a) {
+            return __generator(this,  function (_a) {
                 message = this.getValue();
                 try {
                     if (message.startsWith(prefix)) {
@@ -515,6 +511,7 @@ var app = function () {
                         if (cmd === 'streaming') {
                             client.user.setPresence({ activity: { name: args.join(' '), type: "STREAMING" }, status: 'online' });
                         }
+
                         if (cmd === 'rickroll' || cmd === 'rick') {
                             rickrolls = [
                                 'https://tenor.com/view/rick-astley-rick-roll-dancing-dance-moves-gif-14097983',
@@ -596,7 +593,6 @@ var app = function () {
 
                         }
                         if (cmd == "reply") {
-                            screen.remove(imageViewer)
                             replying = true;
                             input.clearValue();
                             screen.remove(input);
@@ -609,15 +605,54 @@ var app = function () {
                         if (cmd == "channel") {
                             showChannelList();
                         }
+                        if (cmd == "view") {
+                            input.clearValue();
+                            screen.remove(input);
+                            screen.remove(messageList);
+                            if (lastImage) {
+
+                                var prompt = blessed.prompt({
+                                    left: 'center',
+                                    top: 'center',
+                                    height: 'shrink',
+                                    width: 'shrink',
+                                    border: 'line',
+                                });
+                                screen.append(prompt);
+                                screen.render();
+                                if (gif) {
+                                    console.log(gif)
+
+                                    var gifRendered = terminalImage.gifBuffer(lastImage)
+                                    console.log(gifRendered)
+                                    prompt.input("Press Enter to go back!", "", function (name) {
+                                        gifRendered();
+                                        console.clear()
+                                        screen.remove(prompt);
+                                            renderMessages();
+                                     });
+                                  
+                                    
+                                } else {
+                                    console.log(gif)
+                                   
+                                    terminalImage.buffer(lastImage).then(function (buffer) {
+                                        console.log(buffer);
+                                        console.clear()
+                                        screen.remove(prompt);
+                                        prompt.input("Press Enter to go back!","", function (name) {
+                                            renderMessages();
+                                        });
+                                    });
+                                }
+                            }
+                        }
                     }
                     else {
                         if (message.trim() != "") {
                             if (!replying) {
                                 currentChannel.send(message)
                             } else {
-                                screen.append(imageViewer)
-
-
                                 replying = false;
                                 selectedMessage.reply(message);
                             }
