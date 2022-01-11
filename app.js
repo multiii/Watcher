@@ -364,13 +364,40 @@ var app = function () {
         screen.render();
     })
 
+    async function getImage(url) {
 
+
+        var request = await got(url);
+    
+        var contentType = request.headers['content-type'];
+        if (contentType.startsWith("text/html")) {
+            var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
+            let m;
+            while ((m = regex.exec(request.body)) !== null) {
+                // This is necessary to avoid infinite loops with zero-width matches
+                if (m.index === regex.lastIndex) {
+                    regex.lastIndex++;
+                }
+                var body = await got(m[1].split('"')[0]).buffer()
+                lastImage = body;
+                gif = true;
+            }
+
+        }
+        if (contentType.startsWith("image/gif")) {
+            lastImage = request.buffer();
+            gif = true;
+        } else if (contentType.startsWith("image")) {
+            lastImage = request.rawBody;
+            gif = false;
+        }
+    }
     client.on('messageCreate', async function (message) {
         if (currentChannel) {
             if (currentChannel.id == message.channel.id) {
                 if (message.attachments) {
-                    for (var _i = 0, _c = message.attachments.entries(); _i < _c.length; _i++) {
-                        var _d = _c[_i], key = _d[0], attachment = _d[1];
+                    let keys = Array.from(message.attachments.values());
+                    keys.forEach( function (attachment) {
                         var item = messageList.addItem(chalk.cyan('Attachment:'));
                         item.message = message;
                         var item = messageList.addItem(chalk.yellow('Name: ' + attachment.name));
@@ -379,30 +406,8 @@ var app = function () {
                         item.message = message;
                         var item = messageList.addItem(chalk.red('URL: ' + attachment.url));
                         item.message = message;
-                        var request = await got.post(attachment.url)
-                        var contentType = request.headers['content-type'];
-                        if (contentType.startsWith("text/html")) {
-                            var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
-                            let m;
-                            while ((m = regex.exec(request.body)) !== null) {
-                                // This is necessary to avoid infinite loops with zero-width matches
-                                if (m.index === regex.lastIndex) {
-                                    regex.lastIndex++;
-                                }
-                                var body = await got(m[1].split('"')[0]).buffer()
-                                lastImage = body;
-                                gif = true;
-                            }
-
-                        }
-                        if (contentType.startsWith("image/gif")) {
-                            lastImage = request.buffer()
-                            gif = true;
-                        } else if (contentType.startsWith("image")) {
-                            lastImage = request.buffer()
-                            gif = false;
-                        }
-                    }
+                        getImage(attachment.url)
+                    });
                 }
                 if (message.embeds.length !== 0) {
 
@@ -638,9 +643,9 @@ var app = function () {
                                    
                                     terminalImage.buffer(lastImage).then(function (buffer) {
                                         console.log(buffer);
-                                        console.clear()
-                                        screen.remove(prompt);
-                                        prompt.input("Press Enter to go back!","", function (name) {
+                                        prompt.input("Press Enter to go back!", "", function (name) {
+                                            console.clear()
+                                            screen.remove(prompt);
                                             renderMessages();
                                         });
                                     });
