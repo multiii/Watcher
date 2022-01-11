@@ -1,18 +1,22 @@
-'use strict';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url)
 var Discord = require("discord.js");
 import blessed from "neo-blessed";
 import chalk from "chalk";
-
 import https from 'https';
 import got from 'got';
+
+
+var _a, _b;
 var replying = false;
-var render;
-var imageRendering;
+
+
+
+
 var screen = blessed.screen({
     smartCSR: true
 });
+
 
 var input = blessed.textarea({
 
@@ -75,185 +79,6 @@ var log = blessed.list({
     }
 });
 
-class RenderGif {
-    constructor(url,message) {
-        this.url = url;
-        this.messageId = message.id;
-    }
-    async getImage() {
-        this.body = await got(this.url).buffer();
-        imageRendering= this;
-        render.updateImage()
-        render.render();
-    }
-    getBuffer() {
-        return this.body;
-    }
-    getFileUrl() {
-        
-        return `./${this.messageId}`;
-    }
-}
-class RenderItem {
-
-    constructor(message) {
-        this.message = message;
-        this.messageList = [];
-
-    }
-    async createRenderText() {
-        message = this.message;
-        messageList = this.messageList;
-        var words = message.content.split(" ");
-
-        for (var i = 0; i < words.length; i++) {
-            var word = words[i]
-            try {
-                if (word.startsWith("http")) {
-                        var request = await got.post(word)
-                        var contentType = request.headers['content-type'];
-                        if (contentType.startsWith("text/html")) {
-                            var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
-                            let m;
-                            while ((m = regex.exec(request.body)) !== null) {
-                                    // This is necessary to avoid infinite loops with zero-width matches
-                                    if (m.index === regex.lastIndex) {
-                                        regex.lastIndex++;
-                                }
-                                var gif = new RenderGif(m[1].split('"')[0], message.id)
-                                gif.getImage()
-                                render.render()
-                            }
-
-                        }
-                        if (contentType.startsWith("image/gif")) {
-                            var gif = new RenderGif(word,message.id)
-                            gif.getImage()
-                        }
-
-                }
-                
-            } catch (e) {}
-        };
-        
-        if (message.attachments) {
-            for (var _i = 0, _c = message.attachments.entries(); _i < _c.length; _i++) {
-                var _d = _c[_i], key = _d[0], attachment = _d[1];
-                messageList.push(chalk.cyan('Attachment:'));
-                messageList.push(chalk.yellow('Name: ' + attachment.name));
-                messageList.push(chalk.blue('Size: ' + attachment.size));
-                messageList.push(chalk.red('URL: ' + attachment.url));
-            }
-        }
-        if (message.embeds.length !== 0) {
-            messageList.push(chalk.gray(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.red(message.author.username) : chalk.blue(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content + " \n");
-            for (var _e = 0, _f = message.embeds; _e < _f.length; _e++) {
-                var embed = _f[_e];
-                if (embed.title) {
-                    messageList.push(chalk.cyan(embed.title) + '\n');
-                }
-                if (embed.description) {
-                    messageList.push(chalk.blue(embed.description));
-                }
-                if (embed.fields.length !== 0) {
-                    for (var _g = 0, _h = embed.fields; _g < _h.length; _g++) {
-                        var field = _h[_g];
-                        messageList.push(chalk.yellow(field.name) + ": " + field.value);
-                    }
-                }
-                if (embed.image) {
-                    messageList.push('Image: ' + chalk.green((_a = embed.image) === null || _a === void 0 ? void 0 : _a.url));
-                }
-                if (embed.footer) {
-                    messageList.push(chalk.gray((_b = embed.footer) === null || _b === void 0 ? void 0 : _b.text));
-                }
-            }
-        }
-        else {
-            if (message.reference) {
-                let repliedMessage = await message.fetchReference();
-                var message = chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.blue("Replying to:") + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((repliedMessage.author.bot ? chalk.blue(repliedMessage.author.username) : chalk.magenta(repliedMessage.author.username)) + chalk.cyan(' #' + repliedMessage.author.discriminator + ':')) + " " + repliedMessage.content + "             " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content;
-                messageList.push(message);
-            } else {
-                messageList.push(chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content);
-
-            }
-        }
-
-
-
-    }
-    render() {
-        while (!this.messageList) { }
-        if (!this.text) {
-            this.text = this.messageList.join("    ")
-        }
-
-        return this.text;
-    }
-}
-class Render {
-    constructor(screen, messageList,log,imageViewer) {
-        this.screen = screen;
-        this.messageList = messageList;
-        this.messages = [];
-        this.log = log;
-        this.imageViewer = imageViewer;
-    }
-    async updateImage() {
-        this.lastImage = imageRendering;
-        this.imageViewer.clearImage();
-        this.imageViewer.setImage(this.lastImage.getBuffer());
-    }
-    updateMessages(messages) {
-        this.messages = messages;
-        this.messageList.scroll(10000);
-    }
-
-    async render() {
-        this.messageList.clearItems();
-        var messageList = this.messageList;
-
-        this.messages.forEach(function (message) {
-            var item = messageList.addItem(message.render())
-            item.message = message.message;
-
-        });
-        if (imageRendering) {
-            if (this.lastImage) {
-                if (this.lastImage.getFileUrl() != imageRendering.getFileUrl()) {
-                    this.lastImage = imageRendering;
-                    this.imageViewer.clearImage();
-                    this.imageViewer.setImage(this.lastImage.getBuffer());
-
-                }
-
-            } else {
-                this.lastImage = imageRendering;
-
-                this.imageViewer.setImage(this.lastImage.getBuffer());
-
-            }
-        }
-        this.log.scroll(10000);
-
-        screen.render();
-        if (replying) {
-            this.messageList.focus();
-        }
-            
-    }
-    sleep(ms) {
-        return new Promise((resolve) => {
-            setTimeout(resolve, ms);
-        });
-    }
-    stop() {
-        this.rendering = false;
-    }
-}
-
-
 
 
 var favoriteChannels = [];
@@ -261,9 +86,8 @@ var currentChannel;
 var currentServer;
 
 var selectedMessage;
-var lastMessages = [];
 import fs from "fs";
-var prefix="/"
+var prefix = "/"
 
 
 var serverList;
@@ -280,7 +104,7 @@ var messageList = blessed.list({
     keys: true,
     vi: true,
     mouse: true,
-    width: '60%',
+    width: '100%',
     height: '80%',
     top: 2,
     right: 0,
@@ -314,10 +138,11 @@ var messageList = blessed.list({
 });
 
 var imageViewer = blessed.Image({
-    width: "40%",
-    height: "80%",
+    parent: messageList,
+    width: "10%",
+    height: "10%",
     type: "ansi",
-    top: 2,
+    top: 0,
     left: 0,
     tags: true,
     label: ' {bold}{cyan-fg}Image Viewer{/cyan-fg}{/bold} ',
@@ -325,8 +150,6 @@ var imageViewer = blessed.Image({
 
 });
 
-screen.append(log)
- render = new Render(screen, messageList, log, imageViewer);
 var client = new Discord.Client({
     intents: new Discord.Intents([
         "GUILDS",
@@ -345,26 +168,186 @@ var client = new Discord.Client({
         "DIRECT_MESSAGE_TYPING"
     ]), allowedMentions: { parse: ['users', 'roles'], repliedUser: true }
 });
-setUpServerList();
-setUpChannelList();
-function showMessage(message) {
-    if (lastMessages.length == 15) {
-        lastMessages.shift();
-    }
-    var item = new RenderItem(message);
-    item.createRenderText()
-    lastMessages.push(item);
-    render.updateMessages(lastMessages);
 
+
+function renderMessages() {
+    screen.remove(channelList);
+    screen.remove(serverList);
+    //messageList.setLabel(chalk.blueBright(currentServer.name) + "  " + chalk.red(currentChannel.name))
+    screen.append(imageViewer);
+    screen.append(messageList);
+    screen.append(input);
+    input.focus();
+    screen.render();
 }
-client.on('messageCreate',function(message) {
-    if (currentChannel) {
-        if (currentChannel.id == message.channel.id) {
-            showMessage(message);
-            render.render();
+function showChannelList() {
+    channelList = blessed.list({
+        label: ' {bold}{cyan-fg}Your Channels{/cyan-fg}{/bold}  ',
+        tags: true,
+        top: 1,
+        right: 0,
+        width: "100%",
+        height: '90%',
+        keys: true,
+        vi: true,
+        mouse: true,
+        border: 'line',
+        scrollbar: {
+            ch: ' ',
+            track: {
+                bg: 'cyan'
+            },
+            style: {
+                inverse: true
+            }
+        },
+        style: {
+            item: {
+                hover: {
+                    bg: 'blue'
+                }
+            },
+            selected: {
+                bg: 'blue',
+                bold: true
+            }
+        },
+        search: function (callback) {
+            prompt.input('Search:', '', function (err, value) {
+                if (err) return;
+                return callback(null, value);
+            });
         }
+    });
+    channelList.on('select', function (index) {
+        currentChannel = index.channel;
+        log.addItem(currentChannel.name)
+        log.scroll(10000);
+        renderMessages()
+    })
+
+    currentServer.channels.cache.forEach(function (channel, id) {
+        if (channel.isText()) {
+            log.addItem(channel.name)
+            log.scroll(10000);
+            var item = channelList.appendItem(channel.name);
+            item.channel = channel;
+        }
+    });
+
+    screen.remove(imageViewer);
+    screen.remove(serverList);
+    screen.remove(messageList);
+    screen.remove(input);
+    screen.append(channelList);
+    channelList.focus();
+    screen.render();
+}
+
+
+
+function showServerList() {
+    serverList = blessed.list({
+        label: ' {bold}{cyan-fg}Your servers{/cyan-fg}{/bold}  ',
+        tags: true,
+        draggable: true,
+        top: 1,
+        right: 0,
+        width: "100%",
+        height: '90%',
+        keys: true,
+        vi: true,
+        mouse: true,
+        border: 'line',
+        scrollbar: {
+            ch: ' ',
+            track: {
+                bg: 'cyan'
+            },
+            style: {
+                inverse: true
+            }
+        },
+        style: {
+            item: {
+                hover: {
+                    bg: 'blue'
+                }
+            },
+            selected: {
+                bg: 'blue',
+                bold: true
+            }
+        },
+        search: function (callback) {
+            prompt.input('Search:', '', function (err, value) {
+                if (err) return;
+                return callback(null, value);
+            });
+        }
+    });
+    serverList.on('select', function (index) {
+        currentServer = index.guild;
+        log.addItem(currentServer.name)
+        log.scroll(10000);
+        showChannelList()
+    })
+    client.guilds.cache.forEach(function (guild, id) {
+        var item = serverList.appendItem(guild.name);
+        item.guild = guild;
+    });
+    if (channelList) {
+        screen.remove(channelList);
     }
-});
+    screen.remove(messageList);
+    screen.remove(input);
+    screen.append(serverList);
+    serverList.focus();
+    screen.render();
+}
+
+
+
+
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function () { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function () { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+
+
 var app = function () {
 
     fs.readFile("./favoriteChannels.json", "utf8", (err, jsonString) => {
@@ -372,29 +355,140 @@ var app = function () {
             log.addItem("File read failed:", err);
             fs.writeFile('./favoriteChannels.json', JSON.stringify(favoriteChannels), err => {
                 if (err) {
-                     log.addItem('Error writing file', err)
+                    log.addItem('Error writing file', err)
                 } else {
-                     log.addItem('Successfully wrote file')
+                    log.addItem('Successfully wrote file')
                 }
             })
         } else {
             try {
                 favoriteChannels = JSON.parse(jsonString);
             } catch (err) {
-                 log.addItem("Error parsing JSON string:", err);
+                log.addItem("Error parsing JSON string:", err);
             }
         }
         log.scroll(10000);
     });
 
-   
+
     messageList.on('select', async function (index) {
         selectedMessage = index.message;
         screen.append(input);
         input.focus();
         screen.render();
     })
-   
+
+
+    client.on('messageCreate', async function (message) {
+        if (currentChannel) {
+            if (currentChannel.id == message.channel.id) {
+                if (message.attachments) {
+                    for (var _i = 0, _c = message.attachments.entries(); _i < _c.length; _i++) {
+                        var _d = _c[_i], key = _d[0], attachment = _d[1];
+                        var item = messageList.addItem(chalk.cyan('Attachment:'));
+                        item.message = message;
+                        var item = messageList.addItem(chalk.yellow('Name: ' + attachment.name));
+                        item.message = message;
+                        var item = messageList.addItem(chalk.blue('Size: ' + attachment.size));
+                        item.message = message;
+                        var item = messageList.addItem(chalk.red('URL: ' + attachment.url));
+                        item.message = message;
+                        var request = await got.post(attachment.url)
+                        var contentType = request.headers['content-type'];
+                        if (contentType.startsWith("text/html")) {
+                            var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
+                            let m;
+                            while ((m = regex.exec(request.body)) !== null) {
+                                // This is necessary to avoid infinite loops with zero-width matches
+                                if (m.index === regex.lastIndex) {
+                                    regex.lastIndex++;
+                                }
+                                var body = await got(m[1].split('"')[0]).buffer()
+                                imageViewer.setImage(body)
+                            }
+
+                        }
+                        if (contentType.startsWith("image")) {
+                            imageViewer.setImage(request.buffer())
+                        }
+                    }
+                }
+                if (message.embeds.length !== 0) {
+
+                    var item = messageList.addItem(chalk.gray(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.red(message.author.username) : chalk.blue(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content + " \n");
+                    item.message = message;
+                    for (var _e = 0, _f = message.embeds; _e < _f.length; _e++) {
+                        var embed = _f[_e];
+                        if (embed.title) {
+                            var item = messageList.addItem(chalk.cyan(embed.title) + '\n');
+                            item.message = message;
+                        }
+                        if (embed.description) {
+                            var item = messageList.addItem(chalk.blue(embed.description));
+                            item.message = message;
+                        }
+                        if (embed.fields.length !== 0) {
+                            for (var _g = 0, _h = embed.fields; _g < _h.length; _g++) {
+                                var field = _h[_g];
+                                var item = messageList.addItem(chalk.yellow(field.name) + ": " + field.value);
+                                item.message = message;
+                            }
+                        }
+                        if (embed.image) {
+                            var item = messageList.addItem('Image: ' + chalk.green((_a = embed.image) === null || _a === void 0 ? void 0 : _a.url));
+                            item.message = message;
+                        }
+                        if (embed.footer) {
+                            var item = messageList.addItem(chalk.gray((_b = embed.footer) === null || _b === void 0 ? void 0 : _b.text));
+                            item.message = message;
+                        }
+                    }
+                }
+                else {
+                    var words = message.content.split(" ")
+                    for (var i = 0; i < words.length; i++) {
+                        var word = words[i]
+                        try {
+                            if (word.startsWith("http")) {
+                                var request = await got.post(word)
+                                var contentType = request.headers['content-type'];
+                                if (contentType.startsWith("text/html")) {
+                                    var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
+                                    let m;
+                                    while ((m = regex.exec(request.body)) !== null) {
+                                        // This is necessary to avoid infinite loops with zero-width matches
+                                        if (m.index === regex.lastIndex) {
+                                            regex.lastIndex++;
+                                        }
+                                        var body = await got(m[1].split('"')[0]).buffer()
+                                        imageViewer.setImage(body)
+                                    }
+
+                                }
+                                if (contentType.startsWith("image")) {
+                                    imageViewer.setImage(request.buffer())
+                                }
+
+                            }
+                        } catch (e) { }
+                    };
+
+                    if (message.reference) {
+                        let repliedMessage = await message.fetchReference();
+                        var message = chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.blue("Replying to:") + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((repliedMessage.author.bot ? chalk.blue(repliedMessage.author.username) : chalk.magenta(repliedMessage.author.username)) + chalk.cyan(' #' + repliedMessage.author.discriminator + ':')) + " " + repliedMessage.content + "             " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content;
+                        var item = messageList.addItem(message);
+                        item.message = message;
+                    } else {
+                        var item = messageList.addItem(chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content);
+                        item.message = message;
+                    }
+                }
+                messageList.select(messageList.items.length - 1)
+                messageList.scrollTo(10000);
+                screen.render();
+            }
+        }
+    });
 
 
     input.key('enter', function () {
@@ -502,25 +596,18 @@ var app = function () {
 
                         }
                         if (cmd == "reply") {
-                            render.stop();
-                            if (render.lastImage) {
-                                render.lastImage.pause()
-                            }
                             screen.remove(imageViewer)
                             replying = true;
                             input.clearValue();
                             screen.remove(input);
-                            render.messageList.focus();
+                            messageList.focus();
                             screen.render();
                         }
                         if (cmd == "server") {
-                            setUpServerList();
-                            
-                            renderServers();
+                            showServerList();
                         }
                         if (cmd == "channel") {
-                            setUpChannelList();
-                            renderChannels();
+                            showChannelList();
                         }
                     }
                     else {
@@ -529,26 +616,24 @@ var app = function () {
                                 currentChannel.send(message)
                             } else {
                                 screen.append(imageViewer)
-                                if (render.lastImage) {
-                                    render.lastImage.play()
-                                }
-                                
+
+
                                 replying = false;
                                 selectedMessage.reply(message);
                             }
                         }
-                        render.render();
+
                     }
                     try {
                         this.clearValue();
-                    } catch (e) {}
+                    } catch (e) { }
                     screen.render();
                 }
                 catch (e) {
                     console.error(e);
                 }
                 finally {
-                  
+
 
                 }
                 return [2 /*return*/];
@@ -562,193 +647,10 @@ var app = function () {
         return process.exit(0);
     });
 
-    
-    
-    renderServers();
+
+
+    showServerList();
 }
-function setUpChannelList() {
-    channelList = blessed.list({
-        label: ' {bold}{cyan-fg}Your Channels{/cyan-fg}{/bold}  ',
-        tags: true,
-        top: 1,
-        right: 0,
-        width: "100%",
-        height: '90%',
-        keys: true,
-        vi: true,
-        mouse: true,
-        border: 'line',
-        scrollbar: {
-            ch: ' ',
-            track: {
-                bg: 'cyan'
-            },
-            style: {
-                inverse: true
-            }
-        },
-        style: {
-            item: {
-                hover: {
-                    bg: 'blue'
-                }
-            },
-            selected: {
-                bg: 'blue',
-                bold: true
-            }
-        },
-        search: function (callback) {
-            prompt.input('Search:', '', function (err, value) {
-                if (err) return;
-                return callback(null, value);
-            });
-        }
-    });
-    channelList.on('select', function (index) {
-        currentChannel = index.channel;
-        log.addItem(currentChannel.name)
-        log.scroll(10000);
-        renderMessages()
-    })
-}
-function setUpServerList() {
-    serverList = blessed.list({
-        label: ' {bold}{cyan-fg}Your servers{/cyan-fg}{/bold}  ',
-        tags: true,
-        draggable: true,
-        top: 1,
-        right: 0,
-        width: "100%",
-        height: '90%',
-        keys: true,
-        vi: true,
-        mouse: true,
-        border: 'line',
-        scrollbar: {
-            ch: ' ',
-            track: {
-                bg: 'cyan'
-            },
-            style: {
-                inverse: true
-            }
-        },
-        style: {
-            item: {
-                hover: {
-                    bg: 'blue'
-                }
-            },
-            selected: {
-                bg: 'blue',
-                bold: true
-            }
-        },
-        search: function (callback) {
-            prompt.input('Search:', '', function (err, value) {
-                if (err) return;
-                return callback(null, value);
-            });
-        }
-    });
-    serverList.on('select', function (index) {
-        currentServer = index.guild;
-        log.addItem(currentServer.name)
-        log.scroll(10000);
-        renderChannels()
-    })
-}
-
-
-function renderServers() {
-    render.stop()
-    serverList.clearItems()
-    client.guilds.cache.forEach(function (guild, id) {
-        var item = serverList.appendItem(guild.name);
-        item.guild = guild;
-    });
-
-    screen.remove(channelList);
-    screen.remove(messageList);
-    screen.remove(input);
-    screen.append(serverList);
-    serverList.focus();
-    screen.render();
-}
-
-function renderChannels() {
-    render.stop()
-    channelList.clearItems()
-    currentServer.channels.cache.forEach(function (channel, id) {
-        if (channel.isText()) {
-            log.addItem(channel.name)
-            log.scroll(10000);
-            var item = channelList.appendItem(channel.name);
-            item.channel = channel;
-        }
-    });
-
-    screen.remove(imageViewer);
-    screen.remove(serverList);
-    screen.remove(messageList);
-    screen.remove(input);
-    screen.append(channelList);
-    channelList.focus();
-    screen.render();
-}
-
-function renderMessages() {
-    screen.remove(channelList);
-    screen.remove(serverList);
-    //messageList.setLabel(chalk.blueBright(currentServer.name) + "  " + chalk.red(currentChannel.name))
-    screen.append(imageViewer);
-    screen.append(messageList);
-    screen.append(input);
-    input.focus();
-    screen.render();
-    render.render()
-}
-
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function () { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function () { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
-
-
 
 client.once('ready', app);
 client.login("TOKEN");
