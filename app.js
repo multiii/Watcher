@@ -160,6 +160,7 @@ function renderMessages() {
     screen.append(messageList);
     screen.append(input);
     input.focus();
+    console.clear();
     screen.render();
 }
 
@@ -235,6 +236,7 @@ function showGlobalList() {
     screen.remove(input);
     screen.append(channelList);
     channelList.focus();
+    console.clear();
     screen.render();
 }
 
@@ -299,6 +301,7 @@ function showChannelList() {
     screen.remove(input);
     screen.append(channelList);
     channelList.focus();
+    console.clear();
     screen.render();
 }
 
@@ -359,6 +362,7 @@ function showServerList() {
     screen.remove(input);
     screen.append(serverList);
     serverList.focus();
+    console.clear();
     screen.render();
 }
 
@@ -425,6 +429,7 @@ var app = function () {
         selectedMessage = index.message;
         screen.append(input);
         input.focus();
+        console.clear();
         screen.render();
     })
 
@@ -550,6 +555,7 @@ var app = function () {
                 }
                 
                 messageList.scrollTo(10000);
+                console.clear();
                 screen.render();
             }
         }
@@ -666,8 +672,10 @@ var app = function () {
                             input.clearValue();
                             screen.remove(input);
                             messageList.focus();
+                            console.clear();
                             screen.render();
                             messageList.select(messageList.items.length - 1)
+                            console.clear();
                             screen.render();
                         }
                         if (cmd == "server") {
@@ -690,6 +698,7 @@ var app = function () {
                                     border: 'line',
                                 });
                                 screen.append(prompt);
+                                console.clear();
                                 screen.render();
                                 if (gif) {
                                     console.log(gif)
@@ -733,6 +742,7 @@ var app = function () {
                     try {
                         this.clearValue();
                     } catch (e) { }
+                    console.clear();
                     screen.render();
                 }
                 catch (e) {
