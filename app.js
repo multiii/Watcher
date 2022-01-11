@@ -17,8 +17,7 @@ var globalList;
 var screen = blessed.screen({
     smartCSR: true,
     fullUnicode: true,
-    debug: true,
-    dockBorders: true
+    debug: true
 });
 
 
@@ -459,7 +458,7 @@ var app = function () {
     }
     client.on('messageCreate', async function (message) {
         if (currentChannel) {
-            if (currentChannel.id == message.channel.id) {
+            if (currentChannel.id == message.channel.id || favoriteChannels.includes(message.channel.id)) {
                 if (message.attachments) {
                     let keys = Array.from(message.attachments.values());
                     keys.forEach( function (attachment) {
@@ -549,7 +548,7 @@ var app = function () {
                         item.message = message;
                     }
                 }
-                messageList.select(messageList.items.length - 1)
+                
                 messageList.scrollTo(10000);
                 screen.render();
             }
@@ -667,6 +666,8 @@ var app = function () {
                             input.clearValue();
                             screen.remove(input);
                             messageList.focus();
+                            screen.render();
+                            messageList.select(messageList.items.length - 1)
                             screen.render();
                         }
                         if (cmd == "server") {
