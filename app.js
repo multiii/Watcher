@@ -97,8 +97,8 @@ var angleTable = {
 var screen = blessed.screen({
     smartCSR:true,
     fullUnicode:true,
-    debug: true
-   
+    debug: true,
+   useBCE:false
 });
 
 screen.draw = function (start, end) {
@@ -1546,4 +1546,4 @@ var combining = combiningTable.reduce(function (out, row) {
     return first;
 }
 client.once('ready', app);
-client.login("TOKEN");
+client.login("OTI5OTYyNzYzMTc3MDU4Mzg2.Ydu9UA.nQAlPk24vDuo1AtsXAhSv7qES30");
