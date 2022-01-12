@@ -95,7 +95,7 @@ var angleTable = {
 };
 
 var screen = blessed.screen({
-    smartCSR:true,
+ 
     fullUnicode:true,
     debug: true,
    useBCE:false
@@ -445,7 +445,6 @@ var input = blessed.textarea({
         fg: '#f6f6f6',
         bg: 'black'
     },
-    border:"line",
     width: '100%',
     inputOnFocus: true
 });
@@ -518,6 +517,7 @@ var messageList = blessed.list({
     mouse: true,
     width: '100%',
     height: '80%',
+    border:"line",
     top: 2,
     right: 0,
     scrollbar: {
@@ -539,12 +539,7 @@ var messageList = blessed.list({
             bg: 'blue',
             bold: true
         },
-        fg: '#caced6',
-        bg: 'grey',
-        focus: {
-            fg: '#f6f6f6',
-            bg: 'black'
-        }
+        
     },
     items: [],
     search: function (callback) {
