@@ -538,7 +538,7 @@ var messageList = blessed.list({
         selected: {
             bg: 'blue',
             bold: true
-        }
+        },
         fg: '#caced6',
         bg: 'grey',
         focus: {
