@@ -439,6 +439,12 @@ var input = blessed.textarea({
         top: 1,
         left: 2
     },
+    fg: '#caced6',
+    bg: 'grey',
+    focus: {
+        fg: '#f6f6f6',
+        bg: 'black'
+    },
     border:"line",
     width: '100%',
     inputOnFocus: true
@@ -514,7 +520,6 @@ var messageList = blessed.list({
     height: '80%',
     top: 2,
     right: 0,
-
     scrollbar: {
         ch: ' ',
         track: {
@@ -533,6 +538,12 @@ var messageList = blessed.list({
         selected: {
             bg: 'blue',
             bold: true
+        }
+        fg: '#caced6',
+        bg: 'grey',
+        focus: {
+            fg: '#f6f6f6',
+            bg: 'black'
         }
     },
     items: [],
