@@ -439,6 +439,7 @@ var input = blessed.textarea({
         top: 1,
         left: 2
     },
+    border:"line",
     width: '100%',
     inputOnFocus: true
 });
@@ -513,7 +514,7 @@ var messageList = blessed.list({
     height: '80%',
     top: 2,
     right: 0,
-    border:"line",
+
     scrollbar: {
         ch: ' ',
         track: {
