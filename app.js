@@ -507,7 +507,15 @@ var serverList;
 var channelList;
 
 var lastImage;
+const getEmote = name => {
+    let emote;
 
+    emote = client.emojis.cache.find(emoji => emoji.name.toLowerCase() == name.toLowerCase());
+
+    if (!emote) return `:${name}:`;
+
+    else return emote.toString();
+}
 
 var messageList = blessed.list({
     align: 'left',
@@ -1067,6 +1075,22 @@ var app = function () {
                         }
                     }
                     else {
+
+                        if (message.includes(":")) {
+                            let newMessage = "";
+                            for (let mPart of message.split(' ')) {
+
+                                mPart = mPart.trim();
+
+                                if (mPart.charAt(0) === ":" && mPart.charAt(mPart.length - 1) === ":") {
+                                    newMessage += `${getEmote(mPart.slice(1, -1))} `
+                                }
+
+                                else newMessage += `${mPart} `;
+                            }
+                            message = newMessage;
+                        }
+
                         if (message.trim() != "") {
                              
                             
