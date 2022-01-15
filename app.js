@@ -491,7 +491,7 @@ var log = blessed.list({
 });
 
 
-
+var onMessage;
 var favoriteChannels = [];
 var currentChannel;
 var currentServer;
@@ -701,6 +701,12 @@ function showChannelList() {
         currentChannel = index.channel;
         log.addItem(currentChannel.name)
         log.scroll(10000);
+        messageList.items = [];
+        console.clear();
+        screen.render();
+        currentChannel.messages.fetch({ limit: 50 })
+            .then(messages => messages.forEach(message => { onMessage(message); }))
+            .catch(console.error);
         renderMessages()
     })
 
@@ -823,7 +829,34 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+async function getImage(url) {
 
+
+    var request = await got(url);
+
+    var contentType = request.headers['content-type'];
+    if (contentType.startsWith("text/html")) {
+        var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
+        let m;
+        while ((m = regex.exec(request.body)) !== null) {
+            // This is necessary to avoid infinite loops with zero-width matches
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            var body = await got(m[1].split('"')[0]).buffer()
+            lastImage = body;
+            gif = true;
+        }
+
+    }
+    if (contentType.startsWith("image/gif")) {
+        lastImage = request.buffer();
+        gif = true;
+    } else if (contentType.startsWith("image")) {
+        lastImage = request.rawBody;
+        gif = false;
+    }
+}
 
 var app = function () {
 
@@ -850,133 +883,9 @@ var app = function () {
         screen.render();
     })
 
-    async function getImage(url) {
-
-
-        var request = await got(url);
     
-        var contentType = request.headers['content-type'];
-        if (contentType.startsWith("text/html")) {
-            var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
-            let m;
-            while ((m = regex.exec(request.body)) !== null) {
-                // This is necessary to avoid infinite loops with zero-width matches
-                if (m.index === regex.lastIndex) {
-                    regex.lastIndex++;
-                }
-                var body = await got(m[1].split('"')[0]).buffer()
-                lastImage = body;
-                gif = true;
-            }
-
-        }
-        if (contentType.startsWith("image/gif")) {
-            lastImage = request.buffer();
-            gif = true;
-        } else if (contentType.startsWith("image")) {
-            lastImage = request.rawBody;
-            gif = false;
-        }
-    }
-    client.on('messageCreate', async function (message) {
-        if (currentChannel) {
-            if (currentChannel.id == message.channel.id || favoriteChannels.includes(message.channel.id)) {
-                if (message.attachments) {
-                    let keys = Array.from(message.attachments.values());
-                    keys.forEach( function (attachment) {
-                        var item = messageList.addItem(chalk.cyan('Attachment:'));
-                        item.message = message;
-                        var item = messageList.addItem(chalk.yellow('Name: ' + attachment.name));
-                        item.message = message;
-                        var item = messageList.addItem(chalk.blue('Size: ' + attachment.size));
-                        item.message = message;
-                        var item = messageList.addItem(chalk.red('URL: ' + attachment.url));
-                        item.message = message;
-                        getImage(attachment.url)
-                    });
-                }
-                if (message.embeds.length !== 0) {
-
-                    var item = messageList.addItem(chalk.gray(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.red(message.author.username) : chalk.blue(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content + " \n");
-                    item.message = message;
-                    for (var _e = 0, _f = message.embeds; _e < _f.length; _e++) {
-                        var embed = _f[_e];
-                        if (embed.title) {
-                            var item = messageList.addItem(chalk.cyan(embed.title) + '\n');
-                            item.message = message;
-                        }
-                        if (embed.description) {
-                            var item = messageList.addItem(chalk.blue(embed.description));
-                            item.message = message;
-                        }
-                        if (embed.fields.length !== 0) {
-                            for (var _g = 0, _h = embed.fields; _g < _h.length; _g++) {
-                                var field = _h[_g];
-                                var item = messageList.addItem(chalk.yellow(field.name) + ": " + field.value);
-                                item.message = message;
-                            }
-                        }
-                        if (embed.image) {
-                            var item = messageList.addItem('Image: ' + chalk.green((_a = embed.image) === null || _a === void 0 ? void 0 : _a.url));
-                            item.message = message;
-                        }
-                        if (embed.footer) {
-                            var item = messageList.addItem(chalk.gray((_b = embed.footer) === null || _b === void 0 ? void 0 : _b.text));
-                            item.message = message;
-                        }
-                    }
-                }
-                else {
-                    var words = message.content.split(" ")
-                    for (var i = 0; i < words.length; i++) {
-                        var word = words[i]
-                        try {
-                            if (word.startsWith("http")) {
-                                var request = await got.post(word)
-                                var contentType = request.headers['content-type'];
-                                if (contentType.startsWith("text/html")) {
-                                    var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
-                                    let m;
-                                    while ((m = regex.exec(request.body)) !== null) {
-                                        // This is necessary to avoid infinite loops with zero-width matches
-                                        if (m.index === regex.lastIndex) {
-                                            regex.lastIndex++;
-                                        }
-                                        var body = await got(m[1].split('"')[0]).buffer()
-                                        lastImage = body;
-                                        gif = true;
-                                    }
-
-                                }
-                                if (contentType.startsWith("image/gif")) {
-                                    lastImage = request.buffer()
-                                    gif = true;
-                                } else if (contentType.startsWith("image")) {
-                                    lastImage = request.buffer()
-                                    gif = false;
-                                }
-
-                            }
-                        } catch (e) { }
-                    };
-
-                    if (message.reference) {
-                        let repliedMessage = await message.fetchReference();
-                        var message = chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.blue("Replying to:") + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((repliedMessage.author.bot ? chalk.blue(repliedMessage.author.username) : chalk.magenta(repliedMessage.author.username)) + chalk.cyan(' #' + repliedMessage.author.discriminator + ':')) + " " + repliedMessage.content + "             " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content;
-                        var item = messageList.addItem(message);
-                        item.message = message;
-                    } else {
-                        var item = messageList.addItem(chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content);
-                        item.message = message;
-                    }
-                }
-                
-                messageList.scrollTo(10000);
-                console.clear();
-                screen.render();
-            }
-        }
-    });
+ 
+    client.on('messageCreate', onMessage);
 
 
     input.key('enter', function () {
@@ -1063,6 +972,18 @@ var app = function () {
 
                             currentChannel.send(catgifs[Math.floor(Math.random() * catgifs.length)]);
                         }
+                        if (cmd == "emote") {
+                            let emote;
+                            const emoteName = args.join(' ');
+
+                            emote = client.emojis.cache.find(emoji => emoji.name == emoteName);
+
+                            if (!emote) currentChannel.send(`:${emoteName}:`);
+
+                            else currentChannel.send(emote.toString());
+
+
+                        }
                         if (cmd == "doggif") {
                             var doggifs = [
                                 'https://tenor.com/view/malamute-alaskan-gif-18394697',
@@ -1147,6 +1068,8 @@ var app = function () {
                     }
                     else {
                         if (message.trim() != "") {
+                             
+                            
                             if (!replying) {
                                 currentChannel.send(message)
                             } else {
@@ -1159,8 +1082,7 @@ var app = function () {
                     try {
                         this.clearValue();
                     } catch (e) { }
-                    console.clear();
-                    screen.render();
+
                 }
                 catch (e) {
                     console.error(e);
@@ -1552,5 +1474,107 @@ var combining = combiningTable.reduce(function (out, row) {
     }
     return first;
 }
+
+
+onMessage = async function (message) {
+    if (currentChannel) {
+        if (currentChannel.id == message.channel.id || favoriteChannels.includes(message.channel.id)) {
+            if (message.attachments) {
+                let keys = Array.from(message.attachments.values());
+                keys.forEach(function (attachment) {
+                    var item = messageList.addItem(chalk.cyan('Attachment:'));
+                    item.message = message;
+                    var item = messageList.addItem(chalk.yellow('Name: ' + attachment.name));
+                    item.message = message;
+                    var item = messageList.addItem(chalk.blue('Size: ' + attachment.size));
+                    item.message = message;
+                    var item = messageList.addItem(chalk.red('URL: ' + attachment.url));
+                    item.message = message;
+                    getImage(attachment.url)
+                });
+            }
+            if (message.embeds.length !== 0) {
+
+                var item = messageList.addItem(chalk.gray(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.red(message.author.username) : chalk.blue(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content + " \n");
+                item.message = message;
+                for (var _e = 0, _f = message.embeds; _e < _f.length; _e++) {
+                    var embed = _f[_e];
+                    if (embed.title) {
+                        var item = messageList.addItem(chalk.cyan(embed.title) + '\n');
+                        item.message = message;
+                    }
+                    if (embed.description) {
+                        var item = messageList.addItem(chalk.blue(embed.description));
+                        item.message = message;
+                    }
+                    if (embed.fields.length !== 0) {
+                        for (var _g = 0, _h = embed.fields; _g < _h.length; _g++) {
+                            var field = _h[_g];
+                            var item = messageList.addItem(chalk.yellow(field.name) + ": " + field.value);
+                            item.message = message;
+                        }
+                    }
+                    if (embed.image) {
+                        var item = messageList.addItem('Image: ' + chalk.green((_a = embed.image) === null || _a === void 0 ? void 0 : _a.url));
+                        item.message = message;
+                    }
+                    if (embed.footer) {
+                        var item = messageList.addItem(chalk.gray((_b = embed.footer) === null || _b === void 0 ? void 0 : _b.text));
+                        item.message = message;
+                    }
+                }
+            }
+            else {
+                var words = message.content.split(" ")
+                for (var i = 0; i < words.length; i++) {
+                    var word = words[i]
+                    try {
+                        if (word.startsWith("http")) {
+                            var request = await got.post(word)
+                            var contentType = request.headers['content-type'];
+                            if (contentType.startsWith("text/html")) {
+                                var regex = /<meta class="dynamic" name="twitter:image" content="(.+)>/gm;
+                                let m;
+                                while ((m = regex.exec(request.body)) !== null) {
+                                    // This is necessary to avoid infinite loops with zero-width matches
+                                    if (m.index === regex.lastIndex) {
+                                        regex.lastIndex++;
+                                    }
+                                    var body = await got(m[1].split('"')[0]).buffer()
+                                    lastImage = body;
+                                    gif = true;
+                                }
+
+                            }
+                            if (contentType.startsWith("image/gif")) {
+                                lastImage = request.buffer()
+                                gif = true;
+                            } else if (contentType.startsWith("image")) {
+                                lastImage = request.buffer()
+                                gif = false;
+                            }
+
+                        }
+                    } catch (e) { }
+                };
+
+                if (message.reference) {
+                    let repliedMessage = await message.fetchReference();
+                    var message = chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.blue("Replying to:") + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((repliedMessage.author.bot ? chalk.blue(repliedMessage.author.username) : chalk.magenta(repliedMessage.author.username)) + chalk.cyan(' #' + repliedMessage.author.discriminator + ':')) + " " + repliedMessage.content + "             " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content;
+                    var item = messageList.addItem(message);
+                    item.message = message;
+                } else {
+                    var item = messageList.addItem(chalk.green(client.channels.cache.get(message.channel.id).name) + "  " + chalk.green(new Date().getHours() + ':' + new Date().getMinutes()) + " " + ((message.author.bot ? chalk.blue(message.author.username) : chalk.magenta(message.author.username)) + chalk.cyan(' #' + message.author.discriminator + ':')) + " " + message.content);
+                    item.message = message;
+                }
+            }
+
+            messageList.scrollTo(10000);
+            console.clear();
+            screen.render();
+        }
+    }
+};
+
 client.once('ready', app);
 client.login("TOKEN");
